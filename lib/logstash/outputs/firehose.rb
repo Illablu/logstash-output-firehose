@@ -46,7 +46,7 @@ class LogStash::Outputs::Firehose < LogStash::Outputs::Base
   # These are hard limits
   FIREHOSE_PUT_BATCH_SIZE_LIMIT = 4_000_000 # 4MB
   FIREHOSE_PUT_BATCH_RECORD_LIMIT = 500
-  FIREHOSE_PUT_RECORD_SIZE_LIMIT = 1_000
+  FIREHOSE_PUT_RECORD_SIZE_LIMIT = 1_000_000 # 1_000 KB
 
   # make properties visible for tests
   attr_accessor :stream
@@ -157,9 +157,20 @@ class LogStash::Outputs::Firehose < LogStash::Outputs::Base
 
   # Push encoded data into Firehose stream
   private
+
+  def oversized_event(event)
+    event.bytesize > FIREHOSE_PUT_RECORD_SIZE_LIMIT
+  end
+
   def push_data_into_stream
     encoded_event = @event_buffer.pop
     @logger.debug "Pushing encoded event: #{encoded_event}"
+
+    if oversized_event(encoded_event)
+      # Drop it to the floor
+      @logger.error "Event is too big for Firehose: #{encoded_event.bytesize}"
+      return
+    end
 
     begin
       @firehose.put_record({
@@ -186,6 +197,12 @@ class LogStash::Outputs::Firehose < LogStash::Outputs::Base
     array.collect(&:bytesize).inject(0, :+)
   end
 
+  def oversized_events(events)
+    undersized_events = events.reject { |event| oversized_event(event) }
+    oversized_events = events - undersized_events
+    [undersized_events, oversized_events]
+  end
+
   def push_batch_into_stream
     @logger.debug "Pushing encoded events"
 
@@ -195,6 +212,13 @@ class LogStash::Outputs::Firehose < LogStash::Outputs::Base
         @event_buffer_lock.synchronize do
           events = @event_buffer.slice!(0, FIREHOSE_PUT_BATCH_RECORD_LIMIT)
           break if events.nil?
+
+          events, oversized = oversized_events(events)
+          if oversized.length > 0
+            @logger.error "#{oversized.length} events are too big for Firehose, they will not be sent"
+          end
+
+          break if events.empty?
 
           if array_size(events) > FIREHOSE_PUT_BATCH_SIZE_LIMIT
             while events.length > 0
