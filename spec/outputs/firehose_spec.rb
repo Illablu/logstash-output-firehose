@@ -23,8 +23,6 @@ describe LogStash::Outputs::Firehose do
 
     # Setup Firehose client
     subject.stream = stream_name
-    output.access_key_id = "Key ID"
-    output.secret_access_key = "Secret key"
     subject.register
 
     allow(Aws::Firehose::Client).to receive(:new).and_return(firehose_double)
