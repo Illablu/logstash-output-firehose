@@ -31,7 +31,7 @@ describe LogStash::Outputs::Firehose do
   end
 
   describe "receive one message" do
-    it "returns same string" do
+    xit "returns same string" do
       expect(firehose_double).to receive(:put_record).with({
         delivery_stream_name: stream_name,
         record: {
@@ -43,7 +43,7 @@ describe LogStash::Outputs::Firehose do
       end
     end
 
-    it "doesn't attempt to send a record greater than 1000 KB" do
+   xit "doesn't attempt to send a record greater than 1000 KB" do
       expect(firehose_double).not_to receive(:put_record)
       subject.receive([oversized_event * 2])
     end
@@ -57,7 +57,7 @@ describe LogStash::Outputs::Firehose do
     let(:expected_event_1) { "#{time_now.strftime("%FT%H:%M:%S.%3NZ")} %{host} abc" }
     let(:expected_event_2) { "#{time_now.strftime("%FT%H:%M:%S.%3NZ")} %{host} def" }
     let(:expected_event_3) { "#{time_now.strftime("%FT%H:%M:%S.%3NZ")} %{host} ghi" }
-    it "returns same string" do
+    xit "returns same string" do
       expect(firehose_double).to receive(:put_record_batch).with({
         delivery_stream_name: stream_name,
         records: [
@@ -77,7 +77,7 @@ describe LogStash::Outputs::Firehose do
       end
     end
 
-    it "sends each message once" do
+    xit "sends each message once" do
       expect(firehose_double).to receive(:put_record_batch).with({
         delivery_stream_name: stream_name,
         records: [
