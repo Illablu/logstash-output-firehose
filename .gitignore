@@ -6,3 +6,4 @@ vendor
 *.iml
 .git/*
 .idea/*
+*.log
